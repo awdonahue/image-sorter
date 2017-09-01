@@ -50,7 +50,7 @@ def run_sorter(args):
 
     images = scan_images(args['dir'])
 
-    copy_to_new_paths(images, args['depth'])
+    copy_to_new_paths(images, args)
 
 
 def scan_images(dirpath):
@@ -89,7 +89,7 @@ def scan_images(dirpath):
 
     return images_data
 
-def copy_to_new_paths(images, depth, is_move=False):
+def copy_to_new_paths(images, args):
     """
     Copy images to new dated folders
 
@@ -98,6 +98,7 @@ def copy_to_new_paths(images, depth, is_move=False):
     :param depth (str): Folder date depth
     """
     sorted_dir = 'images_sorted'
+    depth = args['depth']
 
     if not os.path.exists(sorted_dir):
         os.mkdir(sorted_dir)
@@ -121,7 +122,7 @@ def copy_to_new_paths(images, depth, is_move=False):
         if not os.path.exists(new_path):
             os.makedirs(new_path, exist_ok=True)
 
-        if is_move:
+        if args['move']:
             dest = move(image['path'], new_path, copy2)
         else:
             dest = copy2(image['path'], new_path)
@@ -152,18 +153,22 @@ def main():
     parser.add_argument('-l',
                         '--log',
                         action='store_true',
-                        help='Log the process in log file')
+                        help='Log the process in log file, otherwise to console')
 
     args = vars(parser.parse_args())
 
-    # is_logging = args['log']
+    if args['log']:
+        logging.basicConfig(filename='report.log',
+                            filemode='w',
+                            level=logging.INFO,
+                            format='%(message)s')
 
-    logging.basicConfig(filename='report.log',
-                        filemode='w',
-                        level=logging.INFO,
-                        format='%(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO,
+                            format='%(message)s')
 
     logging.info(HEAD)
+    logging.info('Report started at: ' + datetime.now().strftime('%Y-%b-%dT%H:%M:%S'))
 
     run_sorter(args)
 
