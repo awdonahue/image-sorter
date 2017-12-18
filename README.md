@@ -4,28 +4,29 @@
 Python script that will sort images into dated folders based off the images metadata
 
 **Requirements**:
-- Homebrew: installation instructions: [Brew.sh](https://brew.sh "Homebrew homepage")
-- Python >= 3.5.2
+- Python >= 3.6.3
 - Required Packages:
   - exifread
 - Supported Image Types:
-  - *.jpeg
-  - *.png
+```
+jpg
+jpeg
+png
+bmp
+gif
+tiff
+exif
+webp
+hdr
+```
 
 ## Setup
 ---
-**Homebrew**
-Install python 3
+1. Install python3
+
+2. Install python packages (from working directory)
 ```bash
-~$ brew install python3
-```
-
-
-**Python**
-
-Install python packages (from working directory)
-```bash
-~$ pip install -r pip-installs
+pip3 install -r pip-installs
 ```
 
 
@@ -34,7 +35,7 @@ Install python packages (from working directory)
 
 To run the script with default args, run:
 ```bash
-~$ python ImageSorter.py
+python3 ImageSorter.py [path/to/images]
 ```
 
 The following args can be passed to config the script:
