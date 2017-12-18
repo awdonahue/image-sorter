@@ -3,7 +3,7 @@
 ###     Program: ImageSorter.py                                                                  ###
 ###   Developer: A.Dubz                                                                          ###
 ### Description: Script to sort images with metadata into dated folders                          ###
-###  Python Ver: 3.5.2                                                                           ###
+###  Python Ver: 3.6.3                                                                           ###
 ###     Created: 2017-03-25                                                                      ###
 ###     Modules: exifRead                                                                        ###
 ###----------------------------------------------------------------------------------------------###
@@ -17,6 +17,7 @@
 import argparse
 import os
 import sys
+import json
 import logging
 from shutil import copy2, move
 from datetime import datetime
@@ -24,22 +25,8 @@ from datetime import datetime
 # Third-party Modules
 import exifread
 
-HEAD = """
-###----------------------------------------------------------------------------------------------###
-###                                   Report for Image Sorter                                    ###
-###                                                                                              ###
-###                                     ** Begin Report **                                       ###
-###                                                                                              ###
-###----------------------------------------------------------------------------------------------###
-"""
+CONFIG_FILE = 'configs.json'
 
-FOOT = """
-###----------------------------------------------------------------------------------------------###
-###                                                                                              ###
-###                                      ** End Report **                                        ###
-###                                                                                              ###
-###----------------------------------------------------------------------------------------------###
-"""
 
 def run_sorter(args):
     """
@@ -71,6 +58,9 @@ def scan_images(dirpath):
     for entry in entries:
         date = None
 
+        # TODO do an os.walk to find images
+        # TODO import config imageFormat list and check each
+
         if not entry.name.startswith('.') and entry.is_file():
             file = open(entry.path, 'rb')
             tags = exifread.process_file(file)
@@ -85,6 +75,7 @@ def scan_images(dirpath):
                 filename=entry.name,
                 path=entry.path,
                 date=date
+                size=entry.size
             ))
 
     return images_data
@@ -157,6 +148,16 @@ def main():
 
     args = vars(parser.parse_args())
 
+    cwd = os.getcwd()
+
+    try:
+        with open(f'{cwd}/{CONFIG_FILE}', 'r') as file:
+            data = file.read().replace('\n', '')
+
+        configs = json.loads(data)
+    except OSError:
+        print(f'Error opening config file. Error: {OSError}')
+
     if args['log']:
         logging.basicConfig(filename='report.log',
                             filemode='w',
@@ -167,12 +168,21 @@ def main():
         logging.basicConfig(level=logging.INFO,
                             format='%(message)s')
 
-    logging.info(HEAD)
-    logging.info('Report started at: ' + datetime.now().strftime('%Y-%b-%dT%H:%M:%S'))
+    logging.info(configs['reportHead'])
+
+    start = datetime.now()
+    logging.info(f'Report started at: {start.strftime(configs["timeFormat"])}')
 
     run_sorter(args)
 
-    logging.info(FOOT)
+    end = datetime.now()
+    logging.info(f'Report ended at: {end.strftime(configs["timeFormat"])}')
+
+    diff = end - start
+    mins, secs = divmod(diff.days * 86400 + diff.seconds, 60)
+
+    logging.info(f'Total run time: {mins} minutes, {secs} seconds')
+    logging.info(configs['reportFoot'])
 
 if __name__ == '__main__':
     main()
