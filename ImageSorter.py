@@ -15,6 +15,8 @@ import os
 import json
 import logging
 import imghdr
+from sys import exit
+from platform import system
 from shutil import copy2, move
 from datetime import datetime
 
@@ -44,7 +46,7 @@ def scan_images(dirpath):
     """
     images_data = []
 
-    for root, dirs, files in os.walk(dirpath):
+    for root, _, files in os.walk(dirpath):
         for name in files:
             fpath = os.path.join(root, name)
 
@@ -109,7 +111,7 @@ def copy_to_new_paths(images, args):
         else:
             dest = copy2(image['path'], new_path)
 
-        logging.info(f'{image['filename']} copied from \'{image['path']}\' --> \'{dest}\'')
+        logging.info(f'{image["filename"]} copied from \'{image["path"]}\' --> \'{dest}\'')
 
 # -----------------------------------------Main function------------------------------------------ #
 
@@ -120,9 +122,8 @@ def main():
     parser = argparse.ArgumentParser(description='Script to organize images into respective '
                                                  'folders by dates')
     parser.add_argument('dir',
-                        nargs='?',
-                        default='images',
-                        help='Directory where the image files are stored. Default: \'images\'')
+                        nargs=1,
+                        help='Directory where the image files are stored')
     parser.add_argument('-d',
                         '--depth',
                         default='month',
@@ -139,8 +140,13 @@ def main():
 
     args = vars(parser.parse_args())
 
-    cwd = os.getcwd()
+    # Verify if directory exists
+    args['dir'] = args['dir'][0]
+    if not os.path.isdir(args['dir']):
+        print('Directory does not exist. Exiting...')
+        exit()
 
+    cwd = os.getcwd()
     try:
         with open(f'{cwd}/{CONFIG_FILE}', 'r') as file:
             data = file.read().replace('\n', '')
