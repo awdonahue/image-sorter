@@ -1,16 +1,5 @@
 {
     "reportHead": "###-------Start of image sorting report-------###",
     "reportFoot": "###--------End of image sorting report--------###",
-    "timeFormat": "%Y-%b-%dT%H:%M:%S",
-    "imageFormats": [
-        "jpg",
-        "jpeg",
-        "png",
-        "bmp",
-        "gif",
-        "tiff",
-        "exif",
-        "webp",
-        "hdr"
-    ]
+    "timeFormat": "%Y-%b-%dT%H:%M:%S"
 }
