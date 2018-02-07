@@ -7,18 +7,7 @@ Python script that will sort images into dated folders based off the images meta
 - Python >= 3.6.3
 - Required Packages:
   - exifread
-- Supported Image Types:
-```
-jpg
-jpeg
-png
-bmp
-gif
-tiff
-exif
-webp
-hdr
-```
+- [See here](https://devdocs.io/python~3.6/library/imghdr#imghdr.what) for supported image types
 
 ## Setup
 ---
@@ -26,7 +15,7 @@ hdr
 
 2. Install python packages (from working directory)
 ```bash
-pip3 install -r pip-installs
+pip3 install -r requirements.txt
 ```
 
 
