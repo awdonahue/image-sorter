@@ -77,7 +77,8 @@ def scan_images(dirpath):
             else:
                 logging.info(f'Skipping file \'{fpath}\'')
 
-    logging.info(f'Total files: {files_count}. Images found: {images_count}. Skipping: {files_count - images_count}')
+    logging.info(f'Total files: {files_count}. Images found: {images_count}. ' +
+                 f'Skipping: {files_count - images_count}')
 
     return images_data
 
@@ -124,7 +125,8 @@ def copy_to_new_paths(images, args):
             action = 'copied'
 
         logging.info(
-            f'{image["filename"]} {action} from \'{os.path.dirname(image["path"])}\' --> \'{os.path.dirname(dest)}\'')
+            f'{image["filename"]} {action} from \'{os.path.dirname(image["path"])}\' --> ' +
+            f'{os.path.dirname(dest)}\'')
 
     logging.info(f'Total images {action}: {len(images)}')
 
@@ -182,7 +184,6 @@ def main():
                             filemode='w',
                             level=logging.INFO,
                             format='%(message)s')
-
     else:
         logging.basicConfig(level=logging.INFO,
                             format='%(message)s')
