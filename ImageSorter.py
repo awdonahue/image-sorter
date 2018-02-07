@@ -109,7 +109,7 @@ def copy_to_new_paths(images, args):
         else:
             dest = copy2(image['path'], new_path)
 
-        logging.info('%s copied from \'%s\' --> \'%s\'', image['filename'], image['path'], dest)
+        logging.info(f'{image['filename']} copied from \'{image['path']}\' --> \'{dest}\'')
 
 # -----------------------------------------Main function------------------------------------------ #
 
