@@ -1,8 +1,8 @@
 # Files and directories
-images/*
-images_sorted/*
 .DS_Store
 .vscode
+tests/images
+tests/images-sorted
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

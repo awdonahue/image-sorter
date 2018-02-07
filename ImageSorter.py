@@ -44,12 +44,18 @@ def scan_images(dirpath):
     :return (list<dict()>):  List of image dictionaries. { filename=(str), date=(date) }.
     """
     images_data = []
+    files_count = 0
+    images_count = 0
 
     for root, _, files in os.walk(dirpath):
+        files_count += len(files)
+
         for name in files:
             fpath = os.path.join(root, name)
 
             if imghdr.what(fpath):
+                images_count += 1
+
                 try:
                     file = open(fpath, 'rb')
                     tags = exifread.process_file(file)
@@ -68,6 +74,10 @@ def scan_images(dirpath):
                     ))
                 finally:
                     file.close()
+            else:
+                logging.info(f'Skipping file \'{fpath}\'')
+
+    logging.info(f'Total files: {files_count}. Images found: {images_count}. Skipping: {files_count - images_count}')
 
     return images_data
 
@@ -79,12 +89,13 @@ def copy_to_new_paths(images, args):
                                  date=(str) }
     :param depth (str): Folder date depth
     """
-    sorted_dir = 'images_sorted'
-    depth = args['depth']
+    # Check output dir, create it if it doesn't exist
+    sorted_dir = args['output'][0]
 
     if not os.path.exists(sorted_dir):
         os.mkdir(sorted_dir)
 
+    depth = args['depth']
     for image in images:
         # Exif Date format: 2016:10:03 18:49:30
         if image['date']:
@@ -107,10 +118,15 @@ def copy_to_new_paths(images, args):
 
         if args['move']:
             dest = move(image['path'], new_path, copy2)
+            action = 'moved'
         else:
             dest = copy2(image['path'], new_path)
+            action = 'copied'
 
-        logging.info(f'{image["filename"]} copied from \'{image["path"]}\' --> \'{dest}\'')
+        logging.info(
+            f'{image["filename"]} {action} from \'{os.path.dirname(image["path"])}\' --> \'{os.path.dirname(dest)}\'')
+
+    logging.info(f'Total images {action}: {len(images)}')
 
 # -----------------------------------------Main function------------------------------------------ #
 
@@ -123,6 +139,11 @@ def main():
     parser.add_argument('dir',
                         nargs=1,
                         help='Directory where the image files are stored')
+    parser.add_argument('-o',
+                        '--output',
+                        nargs=1,
+                        default='/tmp/images-sorted',
+                        help='Where to store sorted images. Default: \'/tmp/images-sorted\'')
     parser.add_argument('-d',
                         '--depth',
                         default='month',
@@ -145,6 +166,7 @@ def main():
         print('Directory does not exist. Exiting...')
         exit()
 
+    # Get configuration data for script
     cwd = os.getcwd()
     try:
         with open(f'{cwd}/{CONFIG_FILE}', 'r') as file:
@@ -154,6 +176,7 @@ def main():
     except OSError:
         print(f'Error opening config file. Error: {OSError}')
 
+    # Set up logging
     if args['log']:
         logging.basicConfig(filename='report.log',
                             filemode='w',
