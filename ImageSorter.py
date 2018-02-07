@@ -3,43 +3,27 @@
 ###     Program: ImageSorter.py                                                                  ###
 ###   Developer: A.Dubz                                                                          ###
 ### Description: Script to sort images with metadata into dated folders                          ###
-###  Python Ver: 3.5.2                                                                           ###
+###  Python Ver: 3.6.3                                                                           ###
 ###     Created: 2017-03-25                                                                      ###
 ###     Modules: exifRead                                                                        ###
 ###----------------------------------------------------------------------------------------------###
-###                                     Modification Log                                         ###
-###  Date        Name       Details                                                              ###
-###  ---------   --------   ---------------------------------------------------------------------###
-###                                                                                              ###
-###----------------------------------------------------------------------------------------------###
 """
+
 # Standard Library
 import argparse
 import os
-import sys
+import json
 import logging
+import imghdr
+from sys import exit
 from shutil import copy2, move
 from datetime import datetime
 
 # Third-party Modules
 import exifread
 
-HEAD = """
-###----------------------------------------------------------------------------------------------###
-###                                   Report for Image Sorter                                    ###
-###                                                                                              ###
-###                                     ** Begin Report **                                       ###
-###                                                                                              ###
-###----------------------------------------------------------------------------------------------###
-"""
+CONFIG_FILE = 'configs.json'
 
-FOOT = """
-###----------------------------------------------------------------------------------------------###
-###                                                                                              ###
-###                                      ** End Report **                                        ###
-###                                                                                              ###
-###----------------------------------------------------------------------------------------------###
-"""
 
 def run_sorter(args):
     """
@@ -52,7 +36,6 @@ def run_sorter(args):
 
     copy_to_new_paths(images, args)
 
-
 def scan_images(dirpath):
     """
     Scan images from specified directory
@@ -60,32 +43,42 @@ def scan_images(dirpath):
     :param dirpath (str): directory that contains the files. Absolute or relative paths can be used
     :return (list<dict()>):  List of image dictionaries. { filename=(str), date=(date) }.
     """
-    try:
-        entries = os.scandir(dirpath)
-    except OSError:
-        print('Error finding dir: %s', dirpath)
-        input('Press enter to exit...')
-        sys.exit()
-
     images_data = []
-    for entry in entries:
-        date = None
+    files_count = 0
+    images_count = 0
 
-        if not entry.name.startswith('.') and entry.is_file():
-            file = open(entry.path, 'rb')
-            tags = exifread.process_file(file)
-            file.close()
+    for root, _, files in os.walk(dirpath):
+        files_count += len(files)
 
-            for tag in tags:
-                if tag in ('Image DateTime', 'EXIF DateTimeOriginal'):
-                    date = str(tags[tag])
-                    break
+        for name in files:
+            fpath = os.path.join(root, name)
 
-            images_data.append(dict(
-                filename=entry.name,
-                path=entry.path,
-                date=date
-            ))
+            if imghdr.what(fpath):
+                images_count += 1
+
+                try:
+                    file = open(fpath, 'rb')
+                    tags = exifread.process_file(file)
+
+                    if 'Image DateTime' in tags:
+                        date = str(tags['Image DateTime'])
+                    elif 'EXIF DateTimeOriginal' in tags:
+                        date = str(tags['EXIF DateTimeOriginal'])
+                    else:
+                        date = None
+
+                    images_data.append(dict(
+                        filename=name,
+                        path=fpath,
+                        date=date
+                    ))
+                finally:
+                    file.close()
+            else:
+                logging.info(f'Skipping file \'{fpath}\'')
+
+    logging.info(f'Total files: {files_count}. Images found: {images_count}. ' +
+                 f'Skipping: {files_count - images_count}')
 
     return images_data
 
@@ -97,37 +90,45 @@ def copy_to_new_paths(images, args):
                                  date=(str) }
     :param depth (str): Folder date depth
     """
-    sorted_dir = 'images_sorted'
-    depth = args['depth']
+    # Check output dir, create it if it doesn't exist
+    sorted_dir = args['output'][0]
 
     if not os.path.exists(sorted_dir):
         os.mkdir(sorted_dir)
 
+    depth = args['depth']
     for image in images:
         # Exif Date format: 2016:10:03 18:49:30
-        date = datetime.strptime(image['date'], '%Y:%m:%d %H:%M:%S')
+        if image['date']:
+            date = datetime.strptime(image['date'], '%Y:%m:%d %H:%M:%S')
 
-        if depth == 'year':
-            new_path = os.path.join(sorted_dir, str(date.year))
+            if depth == 'year':
+                new_path = os.path.join(sorted_dir, str(date.year))
 
-        elif depth == 'month':
-            new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'))
+            elif depth == 'month':
+                new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'))
 
-        elif depth == 'day':
-            new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'),
-                                    date.strftime('%d_%a'))
+            elif depth == 'day':
+                new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'),
+                                        date.strftime('%d_%a'))
         else:
-            new_path = sorted_dir
+            new_path = os.path.join(sorted_dir, 'Unknown_date')
 
         if not os.path.exists(new_path):
             os.makedirs(new_path, exist_ok=True)
 
         if args['move']:
             dest = move(image['path'], new_path, copy2)
+            action = 'moved'
         else:
             dest = copy2(image['path'], new_path)
+            action = 'copied'
 
-        logging.info('%s copied from \'%s\' --> \'%s\'', image['filename'], image['path'], dest)
+        logging.info(
+            f'{image["filename"]} {action} from \'{os.path.dirname(image["path"])}\' --> ' +
+            f'{os.path.dirname(dest)}\'')
+
+    logging.info(f'Total images {action}: {len(images)}')
 
 # -----------------------------------------Main function------------------------------------------ #
 
@@ -138,9 +139,13 @@ def main():
     parser = argparse.ArgumentParser(description='Script to organize images into respective '
                                                  'folders by dates')
     parser.add_argument('dir',
-                        nargs='?',
-                        default='images',
-                        help='Directory where the image files are stored. Default: \'images\'')
+                        nargs=1,
+                        help='Directory where the image files are stored')
+    parser.add_argument('-o',
+                        '--output',
+                        nargs=1,
+                        default='/tmp/images-sorted',
+                        help='Where to store sorted images. Default: \'/tmp/images-sorted\'')
     parser.add_argument('-d',
                         '--depth',
                         default='month',
@@ -157,22 +162,48 @@ def main():
 
     args = vars(parser.parse_args())
 
+    # Verify if directory exists
+    args['dir'] = args['dir'][0]
+    if not os.path.isdir(args['dir']):
+        print('Directory does not exist. Exiting...')
+        exit()
+
+    # Get configuration data for script
+    cwd = os.getcwd()
+    try:
+        with open(f'{cwd}/{CONFIG_FILE}', 'r') as file:
+            data = file.read().replace('\n', '')
+
+        configs = json.loads(data)
+    except OSError:
+        print(f'Error opening config file. Error: {OSError}')
+
+    # Set up logging
     if args['log']:
         logging.basicConfig(filename='report.log',
                             filemode='w',
                             level=logging.INFO,
                             format='%(message)s')
-
     else:
         logging.basicConfig(level=logging.INFO,
                             format='%(message)s')
 
-    logging.info(HEAD)
-    logging.info('Report started at: ' + datetime.now().strftime('%Y-%b-%dT%H:%M:%S'))
+    logging.info(configs['reportHead'])
 
+    start = datetime.now()
+    logging.info(f'Report started at: {start.strftime(configs["timeFormat"])}')
+
+    # Main entry
     run_sorter(args)
 
-    logging.info(FOOT)
+    end = datetime.now()
+    logging.info(f'Report ended at: {end.strftime(configs["timeFormat"])}')
+
+    diff = end - start
+    mins, secs = divmod(diff.days * 86400 + diff.seconds, 60)
+
+    logging.info(f'Total run time: {mins} minutes, {secs} seconds')
+    logging.info(configs['reportFoot'])
 
 if __name__ == '__main__':
     main()
