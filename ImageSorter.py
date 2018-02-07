@@ -7,18 +7,14 @@
 ###     Created: 2017-03-25                                                                      ###
 ###     Modules: exifRead                                                                        ###
 ###----------------------------------------------------------------------------------------------###
-###                                     Modification Log                                         ###
-###  Date        Name       Details                                                              ###
-###  ---------   --------   ---------------------------------------------------------------------###
-###                                                                                              ###
-###----------------------------------------------------------------------------------------------###
 """
+
 # Standard Library
 import argparse
 import os
-import sys
 import json
 import logging
+import imghdr
 from shutil import copy2, move
 from datetime import datetime
 
@@ -39,7 +35,6 @@ def run_sorter(args):
 
     copy_to_new_paths(images, args)
 
-
 def scan_images(dirpath):
     """
     Scan images from specified directory
@@ -47,36 +42,31 @@ def scan_images(dirpath):
     :param dirpath (str): directory that contains the files. Absolute or relative paths can be used
     :return (list<dict()>):  List of image dictionaries. { filename=(str), date=(date) }.
     """
-    try:
-        entries = os.scandir(dirpath)
-    except OSError:
-        print('Error finding dir: %s', dirpath)
-        input('Press enter to exit...')
-        sys.exit()
-
     images_data = []
-    for entry in entries:
-        date = None
 
-        # TODO do an os.walk to find images
-        # TODO import config imageFormat list and check each
+    for root, dirs, files in os.walk(dirpath):
+        for name in files:
+            fpath = os.path.join(root, name)
 
-        if not entry.name.startswith('.') and entry.is_file():
-            file = open(entry.path, 'rb')
-            tags = exifread.process_file(file)
-            file.close()
+            if imghdr.what(fpath):
+                try:
+                    file = open(fpath, 'rb')
+                    tags = exifread.process_file(file)
 
-            for tag in tags:
-                if tag in ('Image DateTime', 'EXIF DateTimeOriginal'):
-                    date = str(tags[tag])
-                    break
+                    if 'Image DateTime' in tags:
+                        date = str(tags['Image DateTime'])
+                    elif 'EXIF DateTimeOriginal' in tags:
+                        date = str(tags['EXIF DateTimeOriginal'])
+                    else:
+                        date = None
 
-            images_data.append(dict(
-                filename=entry.name,
-                path=entry.path,
-                date=date
-                size=entry.size
-            ))
+                    images_data.append(dict(
+                        filename=name,
+                        path=fpath,
+                        date=date
+                    ))
+                finally:
+                    file.close()
 
     return images_data
 
@@ -96,19 +86,20 @@ def copy_to_new_paths(images, args):
 
     for image in images:
         # Exif Date format: 2016:10:03 18:49:30
-        date = datetime.strptime(image['date'], '%Y:%m:%d %H:%M:%S')
+        if image['date']:
+            date = datetime.strptime(image['date'], '%Y:%m:%d %H:%M:%S')
 
-        if depth == 'year':
-            new_path = os.path.join(sorted_dir, str(date.year))
+            if depth == 'year':
+                new_path = os.path.join(sorted_dir, str(date.year))
 
-        elif depth == 'month':
-            new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'))
+            elif depth == 'month':
+                new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'))
 
-        elif depth == 'day':
-            new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'),
-                                    date.strftime('%d_%a'))
+            elif depth == 'day':
+                new_path = os.path.join(sorted_dir, str(date.year), date.strftime('%B'),
+                                        date.strftime('%d_%a'))
         else:
-            new_path = sorted_dir
+            new_path = os.path.join(sorted_dir, 'Unknown_date')
 
         if not os.path.exists(new_path):
             os.makedirs(new_path, exist_ok=True)
@@ -173,6 +164,7 @@ def main():
     start = datetime.now()
     logging.info(f'Report started at: {start.strftime(configs["timeFormat"])}')
 
+    # Main entry
     run_sorter(args)
 
     end = datetime.now()
