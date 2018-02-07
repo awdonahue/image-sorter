@@ -16,7 +16,6 @@ import json
 import logging
 import imghdr
 from sys import exit
-from platform import system
 from shutil import copy2, move
 from datetime import datetime
 
