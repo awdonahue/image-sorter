@@ -32,7 +32,7 @@ The following args can be passed to config the script:
 | Arg                                  | Type       | Default Value       | Description |
 | ------------------------------------ | ---------- | ------------------- | ----------- |
 | `-h` or `--help`                     | optional   | N/A                 | A quick reference on how to use the script |
-| `-o` or `--output`                   | optional   | `tmp/images-sorted` | Folder depth on how to sort images |
+| `-o` or `--output`                   | optional   | `tmp/images-sorted` | Target designation of sorted images |
 | `-d` or `--depth` `<year,month,day>` | optional   | `month`             | Folder depth on how to sort images |
 | `-m` or `--move`                     | optional   | `False`             | Move the images instead of copying them |
 | `-l` or `--log`                      | optional   | `False`             | Log the process in a report log file |
